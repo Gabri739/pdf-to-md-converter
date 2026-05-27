@@ -1,5 +1,5 @@
 /**
- * GLM-OCR WebApp - Frontend Logic
+ * PDF-to-MD OCR WebApp - Frontend Logic
  * Updated for job-based API with streaming OCR
  */
 
@@ -24,8 +24,6 @@ const elements = {
     downloadBtn: document.getElementById('downloadBtn'),
     clearBtn: document.getElementById('clearBtn'),
     statusBadge: document.getElementById('statusBadge'),
-    strategySelect: document.getElementById('strategySelect'),
-
     uploadScreen: document.getElementById('uploadScreen'),
     dropZone: document.getElementById('dropZone'),
 
@@ -40,22 +38,19 @@ const elements = {
     ocrStatus: document.getElementById('ocrStatus'),
     markdownBody: document.getElementById('markdownBody'),
     rawEditor: document.getElementById('rawEditor'),
-    visionOverlay: document.getElementById('visionOverlay'),
     toggleViewBtn: document.getElementById('toggleViewBtn'),
     copyBtn: document.getElementById('copyBtn'),
     processPageBtn: document.getElementById('processPageBtn'),
 
     progressBar: document.getElementById('progressBar'),
     loadingOverlay: document.getElementById('loadingOverlay'),
-    loadingText: document.getElementById('loadingText'),
-    visionWarning: document.getElementById('visionWarning')
+    loadingText: document.getElementById('loadingText')
 };
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     checkHealth();
-    updateVisionWarning();
     setInterval(checkHealth, 30000);
 });
 
@@ -85,12 +80,6 @@ function setupEventListeners() {
     // Export & Clear
     elements.downloadBtn.addEventListener('click', downloadMarkdown);
     elements.clearBtn.addEventListener('click', clearAll);
-
-    // Strategy selector
-    elements.strategySelect?.addEventListener('change', () => {
-        checkHealth();
-        updateVisionWarning();
-    });
 
     // Keyboard
     document.addEventListener('keydown', handleKeyboard);
@@ -236,11 +225,6 @@ function navigatePage(direction) {
 
 // OCR Display
 function updateOCRDisplay(pageNum) {
-    // Hide vision overlay when switching pages
-    if (elements.visionOverlay) {
-        elements.visionOverlay.style.display = 'none';
-    }
-
     const result = state.results[pageNum];
 
     if (!result) {
@@ -348,10 +332,8 @@ async function processPage(pageNum, forceRefresh = false) {
     updateThumbnailStatus(pageNum);
 
     try {
-        const strategy = elements.strategySelect?.value || 'vision';
         const params = new URLSearchParams();
         if (forceRefresh) params.append('refresh', 'true');
-        params.append('strategy', strategy);
         const url = `${API_BASE}/api/ocr/${state.jobId}/${pageNum}?${params.toString()}`;
         const eventSource = new EventSource(url);
 
@@ -379,20 +361,13 @@ async function processPage(pageNum, forceRefresh = false) {
         eventSource.addEventListener('stage', (event) => {
             try {
                 const data = JSON.parse(event.data);
-                if (data.stage === 'auto') {
-                    // Show auto-routing info in status
+                if (data.stage === 'ocr') {
                     if (pageNum === state.currentPage && elements.ocrStatus) {
                         elements.ocrStatus.className = 'ocr-status processing';
                         elements.ocrStatus.innerHTML = `
                             <div class="loading-spinner" style="width: 14px; height: 14px; border-width: 2px;"></div>
-                            <span class="status-text">${data.message || 'Auto-routing...'}</span>
+                            <span class="status-text">${data.message || 'Running OCR...'}</span>
                         `;
-                    }
-                }
-                if (data.stage === 'vision') {
-                    // Show overlay while vision model is processing
-                    if (pageNum === state.currentPage && elements.visionOverlay) {
-                        elements.visionOverlay.style.display = 'flex';
                     }
                 }
             } catch (e) {
@@ -403,9 +378,6 @@ async function processPage(pageNum, forceRefresh = false) {
         eventSource.addEventListener('done', (event) => {
             eventSource.close();
             state.results[pageNum] = { status: 'completed', markdown, error: '' };
-            if (pageNum === state.currentPage && elements.visionOverlay) {
-                elements.visionOverlay.style.display = 'none';
-            }
             updateOCRDisplay(pageNum);
             updateThumbnailStatus(pageNum);
             updateProgress();
@@ -413,9 +385,6 @@ async function processPage(pageNum, forceRefresh = false) {
 
         eventSource.addEventListener('error', (event) => {
             eventSource.close();
-            if (pageNum === state.currentPage && elements.visionOverlay) {
-                elements.visionOverlay.style.display = 'none';
-            }
             try {
                 const data = JSON.parse(event.data);
                 state.results[pageNum] = { status: 'error', markdown: '', error: data.error || 'Unknown error' };
@@ -428,9 +397,6 @@ async function processPage(pageNum, forceRefresh = false) {
 
         eventSource.onerror = () => {
             eventSource.close();
-            if (pageNum === state.currentPage && elements.visionOverlay) {
-                elements.visionOverlay.style.display = 'none';
-            }
             state.results[pageNum] = { status: 'error', markdown: '', error: 'Connection failed' };
             updateOCRDisplay(pageNum);
             updateThumbnailStatus(pageNum);
@@ -590,14 +556,6 @@ async function clearAll() {
     showUploadView();
 }
 
-// Vision Warning Update
-function updateVisionWarning() {
-    const strategy = elements.strategySelect?.value || 'auto';
-    if (elements.visionWarning) {
-        elements.visionWarning.style.display = strategy === 'vision' ? 'block' : 'none';
-    }
-}
-
 // Health Check
 async function checkHealth() {
     try {
@@ -607,14 +565,12 @@ async function checkHealth() {
         const badge = elements.statusBadge;
         const text = badge.querySelector('.status-text');
 
-        if (data.ollama_connected && data.glm_ocr_available) {
+        if (data.ollama_connected && data.ocr_model_available) {
             badge.className = 'status-badge healthy';
-            const strategy = elements.strategySelect?.value || 'vision';
-            const modeLabel = strategy === 'auto' ? 'local' : 'cloud';
-            text.textContent = `Ollama (${modeLabel})`;
+            text.textContent = 'Ollama (local)';
         } else if (data.ollama_connected) {
             badge.className = 'status-badge warning';
-            text.textContent = 'GLM-OCR non trovato';
+            text.textContent = 'OCR model non trovato';
         } else {
             badge.className = 'status-badge error';
             text.textContent = 'Ollama offline';

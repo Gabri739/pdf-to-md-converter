@@ -30,17 +30,6 @@
         </div>
         <div class="header-right">
             <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.bmp,.gif,.webp" hidden>
-            <!-- Warning for Vision strategy -->
-            <div id="visionWarning" style="display: none; color: #f59e0b; font-size: 14px; margin-right: 100px; max-width: 600px;">
-                Attenzione: per poter usare questa strategia devi avere un abbonamento a Ollama Pro
-            </div>
-            <div class="strategy-selector">
-                <label for="strategySelect">Strategia:</label>
-                <select id="strategySelect" class="strategy-select">
-                    <option value="auto" selected>Auto (LightOnOCR)</option>
-                    <option value="vision">Vision </option>
-                </select>
-            </div>
             <button class="btn btn-primary" id="uploadBtn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -154,12 +143,6 @@
                     <span class="status-text">Clicca "OCR" per processare questa pagina</span>
                 </div>
                 <div class="ocr-result" id="ocrResult">
-                    <div class="vision-overlay" id="visionOverlay" style="display: none;">
-                        <div class="vision-overlay-content">
-                            <div class="loading-spinner"></div>
-                            <p>Processamento modello vision...</p>
-                        </div>
-                    </div>
                     <div class="markdown-body" id="markdownBody"></div>
                     <textarea class="raw-editor" id="rawEditor" style="display: none;"></textarea>
                 </div>
